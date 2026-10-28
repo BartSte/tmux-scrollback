@@ -2,13 +2,14 @@
 set -euo pipefail
 
 repository=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-for script in "$repository/bin/tmux-scrollback" "$repository/tests/run.sh"; do
+for script in "$repository/bin/tmux-scrollback" "$repository"/tests/*.sh; do
     bash -n "$script"
 done
 if command -v shellcheck >/dev/null 2>&1; then
-    shellcheck "$repository/bin/tmux-scrollback" "$repository/tests/run.sh"
+    shellcheck "$repository/bin/tmux-scrollback" "$repository"/tests/*.sh
 fi
 nvim --headless -u NONE -i NONE -l "$repository/tests/test_scrollback.lua"
+bash "$repository/tests/test_tmux.sh"
 
 test_directory=$(mktemp -d)
 relocated_repository="$test_directory/repository with spaces"
@@ -77,3 +78,4 @@ for argument in '' invalid; do
     fi
 done
 printf 'Launcher and clipboard tests passed.\n'
+"$repository/bin/tmux-scrollback" --help

@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Neovim ${{ matrix.neovim }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+        neovim: [v0.10.4, stable]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes shellcheck tmux
+      - name: Install Neovim
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEOVIM_VERSION: ${{ matrix.neovim }}
+        run: |
+          gh release download "$NEOVIM_VERSION" --repo neovim/neovim \
+            --pattern nvim-linux-x86_64.tar.gz --dir "$RUNNER_TEMP"
+          mkdir -p "$RUNNER_TEMP/neovim"
+          tar -xzf "$RUNNER_TEMP/nvim-linux-x86_64.tar.gz" \
+            --strip-components=1 -C "$RUNNER_TEMP/neovim"
+          echo "$RUNNER_TEMP/neovim/bin" >> "$GITHUB_PATH"
+      - name: Show versions
+        run: |
+          nvim --version
+          tmux -V
+          shellcheck --version
+      - name: Lint and test
+        run: bash tests/run.sh

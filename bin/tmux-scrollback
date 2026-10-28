@@ -7,6 +7,12 @@ export TMUX_SCROLLBACK_ROOT
 TMUX_SCROLLBACK_ROOT=$(dirname -- "$script_directory")
 
 case "${1:-}" in
+    -h|--help)
+        printf 'Usage: tmux-scrollback PANE | --clipboard | --help\n\n'
+        printf 'Open a tmux pane (for example, %%0) in a Neovim popup.\n'
+        printf 'Use --clipboard to copy standard input through your Neovim clipboard provider.\n'
+        exit 0
+        ;;
     --view)
         exec nvim -n -i NONE \
             -c "lua dofile(vim.env.TMUX_SCROLLBACK_ROOT .. '/lua/tmux_scrollback.lua').open()"
@@ -18,7 +24,7 @@ case "${1:-}" in
 esac
 
 if [[ $# -ne 1 || $1 != %* ]]; then
-    printf 'Usage: tmux-scrollback PANE | --clipboard\n' >&2
+    printf 'Usage: tmux-scrollback PANE | --clipboard | --help\n' >&2
     exit 2
 fi
 
