@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_path=$(realpath -- "${BASH_SOURCE[0]}")
+script_directory=$(dirname -- "$script_path")
+export TMUX_SCROLLBACK_ROOT
+TMUX_SCROLLBACK_ROOT=$(dirname -- "$script_directory")
+
+case "${1:-}" in
+    --view)
+        exec nvim -n -i NONE \
+            -c "lua dofile(vim.env.TMUX_SCROLLBACK_ROOT .. '/lua/tmux_scrollback.lua').open()"
+        ;;
+    --clipboard)
+        exec nvim --headless -n -i NONE \
+            -c "lua dofile(vim.env.TMUX_SCROLLBACK_ROOT .. '/lua/tmux_scrollback.lua').copy_stdin()" -c 'qa!'
+        ;;
+esac
+
+if [[ $# -ne 1 || $1 != %* ]]; then
+    printf 'Usage: tmux-scrollback PANE | --clipboard\n' >&2
+    exit 2
+fi
+
+pane=$1
+capture_file=$(mktemp)
+trap 'unlink -- "$capture_file"' EXIT
+
+read -r history_size cursor_x cursor_y < <(
+    tmux display-message -p -t "$pane" '#{history_size} #{cursor_x} #{cursor_y}'
+)
+pane_directory=$(tmux display-message -p -t "$pane" '#{pane_current_path}')
+tmux capture-pane -p -e -S - -t "$pane" > "$capture_file"
+
+printf -v popup_command '%q --view' "$script_path"
+tmux display-popup -E -B -w 100% -h 100% -d "$pane_directory" \
+    -e "NVIM_SCROLLBACK_FILE=$capture_file" \
+    -e "NVIM_SCROLLBACK_ROW=$((history_size + cursor_y + 1))" \
+    -e "NVIM_SCROLLBACK_COLUMN=$cursor_x" \
+    "$popup_command"
